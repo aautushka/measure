@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <sys/time.h>
 #include <map>
+#include <iomanip>
 
 namespace metric
 {
@@ -272,12 +273,15 @@ T to_json(T t)
 }
 
 template <typename U, typename V>
-void to_json(const tree<U, V>& tr, std::ostream& stream, bool write_default_value = false)
+void to_json(const tree<U, V>& tr, std::ostream& stream, int depth, bool write_default_value = false)
 {
-    stream << '{';
+    auto pad = [depth, &stream](int delta = 0) {stream << std::string((depth + delta) * 4, ' ');};
+
+    stream << '{' << '\n';
 
     if (write_default_value)
     {
+        pad(1);
         stream << "\"#\": \"" << to_json(tr.get()) << '"';
     }
 
@@ -285,22 +289,26 @@ void to_json(const tree<U, V>& tr, std::ostream& stream, bool write_default_valu
     {
         if (write_default_value || i != tr.begin())
         {
-            stream << ", ";
+            stream << ", \n";
         }
 
+        pad(1);
         stream << '"' << i->first << "\":";
         
         auto& child = *i->second;
         if (child.begin() != child.end())
         {
-            to_json(*i->second, stream, true);
+            to_json(*i->second, stream, depth + 1, true);
         }
         else
         {
             stream << '"' << to_json(child.get()) << '"';
         }
     }
-    stream << '}';
+
+    stream << '\n';
+    pad();
+    stream << "}\n";
 }
 
 
@@ -308,7 +316,7 @@ template <typename U, typename V>
 std::string to_json(const tree<U, V>& tr)
 {
     std::stringstream ret;
-    to_json(tr, ret); 
+    to_json(tr, ret, 0); 
     return std::move(ret.str());
 }
 

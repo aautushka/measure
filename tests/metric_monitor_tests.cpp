@@ -64,6 +64,7 @@ struct metric_monitors_test : ::testing::Test
     {
         auto out = erase_all(rep, '"');
         out = erase_all(out, ' ');
+        out = erase_all(out, '\n');
         out = replace_all(out, '1', '0');
         out = replace_all(out, '2', '0');
         out = replace_all(out, '3', '0');
@@ -128,7 +129,7 @@ TEST_F(metric_monitors_test, creates_scoped_metric)
 TEST_F(metric_monitors_test, produces_json_report)
 {
     auto rep = mon.report_json();
-    EXPECT_EQ("{}", mon.report_json());
+    EXPECT_EQ("{}", report(mon));
 }
 
 TEST_F(metric_monitors_test, produces_non_empty_report)
@@ -166,4 +167,13 @@ TEST_F(metric_monitors_test, produces_nested_report)
 
 
     EXPECT_EQ("{a:{#:0,b:{#:0,c:0}}}", report(mon));
+}
+
+TEST_F(metric_monitors_test, produces_report_with_string_key)
+{
+    metric::monitor<const char*> mon;
+    mon.start("a");
+    mon.stop();
+
+    EXPECT_EQ("{a:0}", report(mon));
 }
