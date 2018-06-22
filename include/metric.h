@@ -25,9 +25,293 @@ SOFTWARE.
 #pragma once
 
 #include <sys/time.h>
+#include <map>
 
 namespace metric
 {
+
+template <typename Key, typename Val>
+class tree
+{
+    using leaves_t = std::map<Key, std::unique_ptr<tree>>;    
+
+public:
+    using self_type = tree<Key, Val>;
+    using value_type = Val;
+    using key_type = Key;
+
+    using iterator = typename leaves_t::iterator;
+    using const_iterator = typename leaves_t::const_iterator;
+
+    tree()
+    {
+    }
+
+    tree(const tree& other) = delete;
+    tree& operator =(const tree& other) = delete;
+
+    tree(tree&& other)
+    {
+        *this = std::move(other);
+    }
+
+    tree& operator =(tree&& other)
+    {
+        _val = std::move(other._val);
+        _leaves = std::move(other._leaves);
+        return *this;
+    }
+
+    template <typename T>
+    value_type& operator [](const T& key)
+    {
+        return child(key)->get();
+    }
+
+    template <typename T>
+    const value_type& operator [](const T& key) const
+    {
+        return child(key)->get();
+    }
+
+    value_type& operator [](const key_type& key)
+    {
+        return child(key)->get();
+    }
+
+    const value_type& operator [](const key_type& key) const
+    {
+        return child(key)->get();
+    }
+
+    void insert(const key_type& key, const value_type& val)
+    {
+        child(key) = val;
+    }
+
+    bool empty() const
+    {
+        return _leaves.empty();
+    }
+
+    iterator begin() 
+    {
+        return iterator(_leaves.begin());
+    }
+
+    iterator end()
+    {
+        return iterator(_leaves.end());
+    }
+
+    const_iterator begin() const
+    {
+        return _leaves.begin();
+    }
+
+    const_iterator end() const
+    {
+        return _leaves.end();
+    }
+
+    template <typename Func>
+    void foreach(Func func) const
+    {
+        for (auto i = begin(); i != end(); ++i)
+        {
+            func(i->first, i->second->get());    
+            i->second->foreach(func);
+        }
+    }
+
+    value_type& get()
+    {
+        return _val;
+    }
+
+    const value_type& get() const
+    {
+        return _val;
+    }
+
+    template <typename T> 
+    size_t count(const T& key) const
+    {
+        return find(key) ? 1 : 0;
+    }
+
+    void erase(const key_type& key)
+    {
+        _leaves.erase(key);
+    }
+
+    template <typename T> 
+    void erase(const T& key)
+    {
+        tree* child = this;
+        tree* parent = this;
+        key_type leaf;
+        for (auto k: key)
+        {
+            if (child != parent)
+            {
+                parent = child;
+            }
+
+            auto i = parent->_leaves.find(k);
+            if (i == parent->_leaves.end())
+            {
+                // can't find a node to remove
+                return;
+            }
+            else
+            {
+                child = i->second.get();
+                leaf = k;
+            }
+        }
+
+        parent->erase(leaf);
+    }
+
+    void clear()
+    {
+        _leaves.clear();
+        _val = value_type();
+    }
+
+    size_t size() const
+    {
+        size_t sum = 0;
+        foreach([&](auto, auto) { ++sum; });
+        return sum;
+    }
+
+private:
+    // TODO: gls::not_null
+    tree* child(const key_type& key)
+    {
+        auto i = _leaves.find(key);
+        if (i != _leaves.end())
+        {
+            return i->second.get();
+        }
+        else
+        {
+            std::unique_ptr<self_type> res(new tree);
+            auto ptr = res.get();
+            _leaves[key] = std::move(res);
+            return ptr;
+        }
+    }
+
+    // TODO: gsl::not_null
+    const tree* child(const key_type& key) const
+    {
+        auto i = _leaves.find(key);
+        if (i != _leaves.end())
+        {
+            return i->second.get();
+        }
+
+        throw std::exception();
+    }
+
+    // TODO: gsl::not_null
+    template <typename T>
+    tree* child(const T& key)
+    {
+        self_type* tr = this;
+        for (auto k : key) tr = tr->child(k);
+        return tr;
+    }
+
+    // TODO: gls::not_null
+    template <typename T>
+    const tree* child(const T& key) const
+    {
+        const self_type* tr = this;
+        for (auto& k : key) tr = tr->child(k);
+        return tr;
+    }
+
+    template <typename T> 
+    const tree* find(T& key) const
+    {
+        const self_type* tr = this;
+        for (auto k: key)
+        {
+            auto i = tr->_leaves.find(k);
+            if (i != tr->_leaves.end())
+            {
+                tr = i->second.get();
+            }
+            else
+            {
+                return nullptr;
+            }
+        }
+
+        return tr;
+    }
+
+    self_type* find(const key_type& key) const
+    {
+        auto i = _leaves.find(key);
+        return i == _leaves.end() ? nullptr : i->second.get();
+    }
+
+    value_type _val;
+    leaves_t _leaves;    
+}; 
+
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+T to_json(T t)
+{
+    return t;
+}
+
+template <typename U, typename V>
+void to_json(const tree<U, V>& tr, std::ostream& stream, bool write_default_value = false)
+{
+    stream << '{';
+
+    if (write_default_value)
+    {
+        stream << "\"#\": \"" << to_json(tr.get()) << '"';
+    }
+
+    for (auto i = tr.begin(); i != tr.end(); ++i)
+    {
+        if (write_default_value || i != tr.begin())
+        {
+            stream << ", ";
+        }
+
+        stream << '"' << i->first << "\":";
+        
+        auto& child = *i->second;
+        if (child.begin() != child.end())
+        {
+            to_json(*i->second, stream, true);
+        }
+        else
+        {
+            stream << '"' << to_json(child.get()) << '"';
+        }
+    }
+    stream << '}';
+}
+
+
+template <typename U, typename V>
+std::string to_json(const tree<U, V>& tr)
+{
+    std::stringstream ret;
+    to_json(tr, ret); 
+    return std::move(ret.str());
+}
+
 
 class timer
 {
@@ -84,22 +368,27 @@ class aggregate_timer
 {
 public:
     using usec_t = unsigned long long;
+    using num_t = unsigned long;
 
     void start()
     {
         _elapsed = now() - _elapsed;
     }
 
-    usec_t stop()
+    void stop()
     {
         ++_calls;
         _elapsed = now() - _elapsed;
-        return elapsed();
     }
 
-    usec_t elapsed()
+    usec_t elapsed() const
     {
         return _elapsed;
+    }
+
+    num_t calls() const
+    {
+        return _calls;
     }
 
     static usec_t now()
@@ -420,8 +709,27 @@ public:
     template <typename F>
     void foreach(F&& func)
     {
-        foreach_node(root, [&func, this](auto node) { func(at(node).key, at(node).value); });
+        foreach_node(root, [&func, this](index_type node) { func(at(node).key, at(node).value); });
     }
+
+    template <typename F>
+    void foreach_path(F&& func)
+    {
+        foreach_node(root, [&func, this](index_type node)
+        {
+            auto root = node;
+            std::vector<key_type> path;
+            path.push_back(node->key);
+            while (node->parent)
+            {
+                node = node->parent;
+                path.insert(path.begin(), node->key);
+            }
+            
+            func(path, at(root).value);
+        });
+    }
+    
 
 private:
     struct node
@@ -610,7 +918,7 @@ public:
         friend class monitor;
     };
     
-    /* using report_t = tree<T, unsigned long long>; */
+    using report_t = tree<T, unsigned long long>;
 
     void start(T id)
     {
@@ -632,22 +940,40 @@ public:
         return scope(id);
     }
 
-    /*report_t report()
+    report_t report()
     {
         report_t res;
-        trie_.foreach([&res](auto key, auto& val)
+        trie_.foreach_path([&res](const std::vector<T> path, aggregate_timer& val)
         {
-            res[{key}] = val.elapsed();
+            res[path] = val.elapsed();
         });
 
         return res;
-    }*/
+    }
+
+    template <typename F>
+    void foreach(F&& f)
+    {
+        // TODO perfect forwarding for f
+        trie_.foreach([&f](T key, timer& val)
+        {
+            f(key, val.elapsed(), val.calls());
+        });
+    }
+
+    template <typename F>
+    void foreach_path(F&& f)
+    {
+        trie_.foreach_path([&f](const char* key, timer& val)
+        {
+            f(key, val.elapsed(), val.calls());
+        });
+    }
 
     std::string report_json()
     {
-        /* auto data = report(); */
-        /* return haisu::to_json(report()); */
-        return "";
+        auto data = report();
+        return to_json(report());
     }
     
 private:
