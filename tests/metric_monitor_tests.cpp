@@ -109,7 +109,7 @@ TEST_F(metric_monitors_test, creates_manual_metric)
     mon.stop();
 
     auto rep = mon.report();
-    EXPECT_LE(1, rep[1]);
+    EXPECT_LE("1", rep[1]);
 }
 
 TEST_F(metric_monitors_test, creates_nested_metrics)
@@ -121,10 +121,10 @@ TEST_F(metric_monitors_test, creates_nested_metrics)
     mon.stop();
 
     auto rep = mon.report();
-    EXPECT_LE(1, rep[1]);
+    EXPECT_LE("1", rep[1]);
 
     std::vector<int> key = {1, 2};
-    EXPECT_LE(1, rep[key]);
+    EXPECT_LE("1", rep[key]);
 }
 
 TEST_F(metric_monitors_test, creates_scoped_metric)
@@ -135,7 +135,7 @@ TEST_F(metric_monitors_test, creates_scoped_metric)
     }
 
     auto rep = mon.report();
-    EXPECT_LE(1, rep[1]);
+    EXPECT_LE("1", rep[1]);
 }
 
 TEST_F(metric_monitors_test, produces_json_report)
@@ -271,7 +271,7 @@ TEST_F(metric_monitors_test, reports_percentages)
     busy_loop(1);
     mon.stop();
 
-    EXPECT_EQ("{1:100}", exact_report(mon, metric::report_type::percentages));
+    EXPECT_EQ("{1:100%}", exact_report(mon, metric::report_type::percentages));
 }
 
 TEST_F(metric_monitors_test, reports_number_of_calls)
@@ -328,3 +328,16 @@ TEST_F(metric_monitors_test, cant_start_sampling_because_of_delay)
     EXPECT_EQ("{}", exact_report(mon, metric::report_type::calls));
 }
 
+TEST_F(metric_monitors_test, sample_range)
+{
+    mon.start_sampling_after(1);
+    mon.stop_sampling_after(1);
+    mon.start(1);
+    mon.stop();
+    mon.start(2);
+    mon.stop();
+    mon.start(3);
+    mon.stop();
+
+    EXPECT_EQ("{2:1}", exact_report(mon, metric::report_type::calls));
+}

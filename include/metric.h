@@ -272,6 +272,12 @@ T to_json(T t)
     return t;
 }
 
+inline std::string to_json(std::string t)
+{
+    // TODO: escaping!
+    return t;
+}
+
 template <typename U, typename V>
 void to_json(const tree<U, V>& tr, std::ostream& stream, int depth, bool write_default_value = false)
 {
@@ -910,7 +916,8 @@ enum class report_type : int
     averages,
     calls,
     percentages,
-    totals
+    totals,
+    full
 };
 
 template <typename T>
@@ -968,7 +975,7 @@ public:
         friend class monitor;
     };
     
-    using report_t = tree<T, float>;
+    using report_t = tree<T, std::string>;
 
     void start(T id)
     {
@@ -1013,16 +1020,16 @@ public:
     report_t report(report_type type = report_type::averages)
     {
         report_t res;
-        if (type != report_type::percentages)
+        if (type != report_type::percentages && type != report_type::full)
         {
             trie_.foreach_path([&res, type](const std::vector<T> path, aggregate_timer& val)
             {
                 switch (type)
                 {
-                case report_type::averages: res[path] = val.avg(); break;
-                case report_type::calls: res[path] = val.calls(); break;
-                case report_type::totals: res[path] = val.elapsed(); break;
-                case report_type::percentages: res[path] = 0; break;
+                case report_type::averages: res[path] = str(val.avg()); break;
+                case report_type::calls: res[path] = str(val.calls()); break;
+                case report_type::totals: res[path] = str(val.elapsed()); break;
+                default: res[path] = ""; break;
                 }
             });
         } 
@@ -1036,9 +1043,20 @@ public:
                     total_time += val.elapsed();
                 }
             });
-            trie_.foreach_path([&res, total_time](const std::vector<T> path, aggregate_timer& val)
+
+            trie_.foreach_path([&res, total_time, type](const std::vector<T> path, aggregate_timer& val)
             {
-                res[path] = val.elapsed() / (double)total_time * 100;
+                auto percentage = val.elapsed() / (double)total_time * 100;
+                if (type == report_type::percentages)
+                {
+                    res[path] = str(percentage) + "%";
+                }
+                else
+                {
+                    std::stringstream ss;
+                    ss << percentage << "%, " << val.elapsed() << "us, " << val.calls() << "calls, " << val.avg() << "avg us";
+                    res[path] = ss.str();
+                }
             });
         }
 
@@ -1084,6 +1102,14 @@ private:
     trie<T, aggregate_timer> trie_;
     unsigned sample_limit_ = 0xffffffff;
     unsigned sample_start_ = 1;
+
+    template <typename Type>
+    static std::string str(Type&& t)
+    {
+        std::stringstream ss;
+        ss << t;
+        return ss.str();
+    }
 };
 
 } // namespace metric
