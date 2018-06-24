@@ -635,8 +635,11 @@ public:
     value_type& up()
     {
         assert(cursor != nullidx);
+        assert(trie_depth > 0);
+
         auto& res = at(cursor).value;
         cursor = at(cursor).parent;
+        --trie_depth;
         return res;
     }
 
@@ -644,8 +647,11 @@ public:
     void up(F&& value_func)
     {
         assert(cursor != nullidx);
+        assert(trie_depth > 0);
+
         at(cursor).value = value_func(at(cursor).value);
         cursor = at(cursor).parent;
+        --trie_depth;
     }
 
     value_type& down(key_type key)
@@ -656,17 +662,21 @@ public:
         }
         else
         {
-            if (root != nullidx)
+            cursor = root;
+            while (cursor != nullidx && key != at(cursor).key)
             {
-                assert(key == at(root).key);
-                cursor = root;
+                cursor = cursor->sibling;
             }
-            else 
+
+            if (cursor == nullidx)
             {
-                root = cursor = new_node(key);
+                cursor = new_node(key);
+                cursor->sibling = root;
+                root = cursor;
             }
         }
 
+        ++trie_depth;
         return at(cursor).value;
     }
 
@@ -742,6 +752,11 @@ public:
             func(path, at(root).value);
         });
     }
+
+    unsigned depth() const
+    {
+        return trie_depth;
+    }
     
 
 private:
@@ -786,10 +801,12 @@ private:
         }
         else
         {
-            if (root != nullidx && key == at(root).key)
+            auto res = root;
+            while (res != nullidx && key != at(res).key)
             {
-                return root;
+                res = res->sibling;
             }
+            return res;
         }
 
         return nullidx;
@@ -873,6 +890,7 @@ private:
 
     index_type cursor = nullidx;
     index_type root = nullidx;
+    unsigned trie_depth = 0;
     heap_pool<node> pool;
 };
 
@@ -935,12 +953,24 @@ public:
 
     void start(T id)
     {
-        trie_.down(id).start();
+        if (trie_.depth() > 0)
+        {
+            return trie_.down(id).start();
+        }
+
+        if (sample_limit_ > 0)
+        {
+            --sample_limit_;
+            return trie_.down(id).start();
+        }
     }
 
     void stop()
     {
-        trie_.up().stop();
+        if (trie_.depth() > 0 || sample_limit_ > 0)
+        {
+            trie_.up().stop();
+        }
     }
 
     metric scope(T id)
@@ -988,10 +1018,16 @@ public:
         auto data = report();
         return to_json(report());
     }
+
+    void sample(unsigned limit)
+    {
+        sample_limit_ = limit;
+    }
     
 private:
     using timer = aggregate_timer;
     trie<T, aggregate_timer> trie_;
+    unsigned sample_limit_ = 0xffffffff;
 };
 
 } // namespace metric

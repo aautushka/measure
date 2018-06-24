@@ -147,3 +147,69 @@ TEST_F(metric_trie_test, preserves_top_node)
     EXPECT_EQ(123, trie.down(11));
 }
 
+TEST_F(metric_trie_test, initially_has_zero_depth)
+{
+    EXPECT_EQ(0u, trie.depth());
+}
+
+TEST_F(metric_trie_test, grows_in_depth)
+{
+    trie.down(1);
+    EXPECT_EQ(1u, trie.depth());
+
+    trie.down(2);
+    EXPECT_EQ(2u, trie.depth());
+
+    trie.down(3);
+    EXPECT_EQ(3u, trie.depth());
+}
+
+TEST_F(metric_trie_test, reduces_depth)
+{
+    trie.down(1);
+    trie.down(2);
+    trie.down(3);
+
+    trie.up();
+    EXPECT_EQ(2u, trie.depth());
+
+    trie.up();
+    EXPECT_EQ(1u, trie.depth());
+
+    trie.up();
+    EXPECT_EQ(0u, trie.depth());
+}
+
+TEST_F(metric_trie_test, reduces_depth_in_labmda_api)
+{
+    auto up = [this]{this->trie.up([](auto){return 1;});};
+
+    trie.down(1);
+    trie.down(2);
+    trie.down(3);
+
+    up();
+    EXPECT_EQ(2u, trie.depth());
+
+    up();
+    EXPECT_EQ(1u, trie.depth());
+
+    up();
+    EXPECT_EQ(0u, trie.depth());
+}
+
+TEST_F(metric_trie_test, have_no_common_root)
+{
+    trie.down(1) = 1;
+    trie.up();
+
+    trie.down(2) = 2;
+    trie.up();
+
+    EXPECT_TRUE(trie.has({1}));
+    EXPECT_EQ(1, trie.at({1}));
+
+    EXPECT_TRUE(trie.has({2}));
+    EXPECT_EQ(2, trie.at({2}));
+}
+

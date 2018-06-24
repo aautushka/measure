@@ -177,3 +177,78 @@ TEST_F(metric_monitors_test, produces_report_with_string_key)
 
     EXPECT_EQ("{a:0}", report(mon));
 }
+
+TEST_F(metric_monitors_test, never_starts_sampling)
+{
+    mon.sample(0);
+    mon.start(1);
+    mon.start(2);
+    mon.start(3);
+    mon.stop();
+    mon.stop();
+    mon.stop();
+    
+    EXPECT_EQ("{}", report(mon));
+}
+
+TEST_F(metric_monitors_test, produces_json_with_no_common_root_element)
+{
+    metric::monitor<char> mon;
+    mon.start('a');
+    mon.stop();
+
+    mon.start('b');
+    mon.stop();
+
+
+    EXPECT_EQ("{a:0,b:0}", report(mon));
+}
+
+TEST_F(metric_monitors_test, stops_sampling_after_reaching_limit_of_one)
+{
+    metric::monitor<char> mon;
+    mon.sample(1);
+
+    mon.start('a');
+    mon.stop();
+
+    mon.start('b');
+    mon.stop();
+    
+    mon.start('c');
+    mon.stop();
+
+    EXPECT_EQ("{a:0}", report(mon));
+}
+
+TEST_F(metric_monitors_test, stops_sampling_after_reaching_limit_of_two)
+{
+    metric::monitor<char> mon;
+    mon.sample(2);
+
+    mon.start('a');
+    mon.stop();
+
+    mon.start('b');
+    mon.stop();
+    
+    mon.start('c');
+    mon.stop();
+
+    EXPECT_EQ("{a:0,b:0}", report(mon));
+}
+
+TEST_F(metric_monitors_test, sampling_limit_has_no_affect_on_sampling_depth)
+{
+    metric::monitor<char> mon;
+    mon.sample(1);
+
+    mon.start('a');
+    mon.start('b');
+    mon.start('c');
+    mon.stop();
+    mon.stop();
+    mon.stop();
+
+    EXPECT_EQ("{a:{#:0,b:{#:0,c:0}}}", report(mon));
+}
