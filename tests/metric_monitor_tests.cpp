@@ -306,3 +306,25 @@ TEST_F(metric_monitors_test, reports_number_of_calls_in_flat_object)
     EXPECT_EQ("{1:1,2:1}", exact_report(mon, metric::report_type::calls));
 }
 
+TEST_F(metric_monitors_test, starts_sampling_with_delay)
+{
+    mon.start_sampling_after(1);
+    mon.start(1);
+    mon.stop();
+    mon.start(2);
+    mon.stop();
+
+    EXPECT_EQ("{2:1}", exact_report(mon, metric::report_type::calls));
+}
+
+TEST_F(metric_monitors_test, cant_start_sampling_because_of_delay)
+{
+    mon.start_sampling_after(0xff);
+    mon.start(1);
+    mon.stop();
+    mon.start(2);
+    mon.stop();
+
+    EXPECT_EQ("{}", exact_report(mon, metric::report_type::calls));
+}
+

@@ -976,6 +976,14 @@ public:
         {
             return trie_.down(id).start();
         }
+        
+        if (sample_start_ > 0)
+        {
+            if (--sample_start_)
+            {
+                return;
+            }
+        }
 
         if (sample_limit_ > 0)
         {
@@ -986,7 +994,7 @@ public:
 
     void stop()
     {
-        if (trie_.depth() > 0 || sample_limit_ > 0)
+        if (sample_start_ == 0 && (trie_.depth() > 0 || sample_limit_ > 0))
         {
             trie_.up().stop();
         }
@@ -1068,12 +1076,14 @@ public:
     
     void start_sampling_after(unsigned samples_num)
     {
+        sample_start_ = samples_num + 1;
     }
     
 private:
     using timer = aggregate_timer;
     trie<T, aggregate_timer> trie_;
     unsigned sample_limit_ = 0xffffffff;
+    unsigned sample_start_ = 1;
 };
 
 } // namespace metric
