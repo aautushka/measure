@@ -1005,16 +1005,34 @@ public:
     report_t report(report_type type = report_type::averages)
     {
         report_t res;
-        trie_.foreach_path([&res, type](const std::vector<T> path, aggregate_timer& val)
+        if (type != report_type::percentages)
         {
-            switch (type)
+            trie_.foreach_path([&res, type](const std::vector<T> path, aggregate_timer& val)
             {
-            case report_type::averages: res[path] = val.avg(); break;
-            case report_type::calls: res[path] = val.calls(); break;
-            case report_type::totals: res[path] = val.elapsed(); break;
-            case report_type::percentages: res[path] = 0; break;
-            }
-        });
+                switch (type)
+                {
+                case report_type::averages: res[path] = val.avg(); break;
+                case report_type::calls: res[path] = val.calls(); break;
+                case report_type::totals: res[path] = val.elapsed(); break;
+                case report_type::percentages: res[path] = 0; break;
+                }
+            });
+        } 
+        else
+        {
+            uint64_t total_time = 0;
+            trie_.foreach_path([&total_time](const std::vector<T> path, aggregate_timer& val)
+            {
+                if (path.size() == 1)
+                {
+                    total_time += val.elapsed();
+                }
+            });
+            trie_.foreach_path([&res, total_time](const std::vector<T> path, aggregate_timer& val)
+            {
+                res[path] = val.elapsed() / total_time * 100;
+            });
+        }
 
         return res;
     }
