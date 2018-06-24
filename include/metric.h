@@ -905,6 +905,14 @@ private:
     heap_pool<node> pool;
 };
 
+enum class report_type : int
+{
+    averages,
+    calls,
+    percentages,
+    totals
+};
+
 template <typename T>
 class monitor
 {
@@ -994,12 +1002,18 @@ public:
         return scope(id);
     }
 
-    report_t report()
+    report_t report(report_type type = report_type::averages)
     {
         report_t res;
-        trie_.foreach_path([&res](const std::vector<T> path, aggregate_timer& val)
+        trie_.foreach_path([&res, type](const std::vector<T> path, aggregate_timer& val)
         {
-            res[path] = val.avg();
+            switch (type)
+            {
+            case report_type::averages: res[path] = val.avg(); break;
+            case report_type::calls: res[path] = val.calls(); break;
+            case report_type::totals: res[path] = val.elapsed(); break;
+            case report_type::percentages: res[path] = 0; break;
+            }
         });
 
         return res;
