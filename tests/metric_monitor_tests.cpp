@@ -274,3 +274,35 @@ TEST_F(metric_monitors_test, reports_percentages)
     EXPECT_EQ("{1:100}", exact_report(mon, metric::report_type::percentages));
 }
 
+TEST_F(metric_monitors_test, reports_number_of_calls)
+{
+    mon.start(1);
+    mon.stop();
+    mon.start(1);
+    mon.stop();
+    mon.start(1);
+    mon.stop();
+
+    EXPECT_EQ("{1:3}", exact_report(mon, metric::report_type::calls));
+}
+
+TEST_F(metric_monitors_test, reports_number_of_calls_in_nested_object)
+{
+    mon.start(1);
+    mon.start(2);
+    mon.stop();
+    mon.stop();
+
+    EXPECT_EQ("{1:{#:1,2:1}}", exact_report(mon, metric::report_type::calls));
+}
+
+TEST_F(metric_monitors_test, reports_number_of_calls_in_flat_object)
+{
+    mon.start(1);
+    mon.stop();
+    mon.start(2);
+    mon.stop();
+
+    EXPECT_EQ("{1:1,2:1}", exact_report(mon, metric::report_type::calls));
+}
+

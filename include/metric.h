@@ -399,9 +399,9 @@ public:
         return _calls;
     }
 
-    float avg() const
+    double avg() const
     {
-        return _calls ? (float)_elapsed / _calls : 0;
+        return _calls ? (double)_elapsed / _calls : 0;
     }
 
     static usec_t now()
@@ -1030,7 +1030,7 @@ public:
             });
             trie_.foreach_path([&res, total_time](const std::vector<T> path, aggregate_timer& val)
             {
-                res[path] = val.elapsed() / total_time * 100;
+                res[path] = val.elapsed() / (double)total_time * 100;
             });
         }
 
