@@ -60,11 +60,17 @@ struct metric_monitors_test : ::testing::Test
         return out;
     }
 
-    std::string beautify_report(std::string rep)
+    std::string beautify_minimally(std::string rep)
     {
         auto out = erase_all(rep, '"');
         out = erase_all(out, ' ');
         out = erase_all(out, '\n');
+        return out;
+    }
+
+    std::string beautify_report(std::string rep)
+    {
+        auto out = beautify_minimally(rep);
         out = replace_all(out, '1', '0');
         out = replace_all(out, '2', '0');
         out = replace_all(out, '3', '0');
@@ -78,9 +84,15 @@ struct metric_monitors_test : ::testing::Test
     }
 
     template <typename Monitor>
-    std::string report(Monitor&& mon)
+    std::string report(Monitor&& mon, metric::report_type type = metric::report_type::averages)
     {
-        return beautify_report(mon.report_json());
+        return beautify_report(mon.report_json(type));
+    }
+
+    template <typename Monitor>
+    std::string exact_report(Monitor&& mon, metric::report_type type = metric::report_type::averages)
+    {
+        return beautify_minimally(mon.report_json(type));
     }
 
     std::string report() 
@@ -252,3 +264,13 @@ TEST_F(metric_monitors_test, sampling_limit_has_no_affect_on_sampling_depth)
 
     EXPECT_EQ("{a:{#:0,b:{#:0,c:0}}}", report(mon));
 }
+
+TEST_F(metric_monitors_test, reports_percentages)
+{
+    mon.start(1);
+    busy_loop(1);
+    mon.stop();
+
+    EXPECT_EQ("{1:100}", exact_report(mon, metric::report_type::percentages));
+}
+

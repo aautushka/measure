@@ -1056,10 +1056,9 @@ public:
         });
     }
 
-    std::string report_json()
+    std::string report_json(report_type type = report_type::averages)
     {
-        auto data = report();
-        return to_json(report());
+        return to_json(report(type));
     }
 
     void sample(unsigned limit)
