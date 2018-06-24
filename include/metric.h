@@ -184,7 +184,7 @@ public:
     size_t size() const
     {
         size_t sum = 0;
-        foreach([&](auto, auto) { ++sum; });
+        foreach([&](Key&, Val&) { ++sum; });
         return sum;
     }
 
@@ -266,7 +266,7 @@ private:
     leaves_t _leaves;    
 }; 
 
-template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
+template <typename T, typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
 T to_json(T t)
 {
     return t;
@@ -308,7 +308,7 @@ void to_json(const tree<U, V>& tr, std::ostream& stream, int depth, bool write_d
 
     stream << '\n';
     pad();
-    stream << "}\n";
+    stream << "}";
 }
 
 
@@ -317,7 +317,7 @@ std::string to_json(const tree<U, V>& tr)
 {
     std::stringstream ret;
     to_json(tr, ret, 0); 
-    return std::move(ret.str());
+    return ret.str();
 }
 
 
@@ -397,6 +397,11 @@ public:
     num_t calls() const
     {
         return _calls;
+    }
+
+    float avg() const
+    {
+        return _calls ? (float)_elapsed / _calls : 0;
     }
 
     static usec_t now()
@@ -926,7 +931,7 @@ public:
         friend class monitor;
     };
     
-    using report_t = tree<T, unsigned long long>;
+    using report_t = tree<T, float>;
 
     void start(T id)
     {
@@ -935,7 +940,7 @@ public:
 
     void stop()
     {
-        trie_.up().start();
+        trie_.up().stop();
     }
 
     metric scope(T id)
@@ -953,7 +958,7 @@ public:
         report_t res;
         trie_.foreach_path([&res](const std::vector<T> path, aggregate_timer& val)
         {
-            res[path] = val.elapsed();
+            res[path] = val.avg();
         });
 
         return res;
