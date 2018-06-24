@@ -139,3 +139,11 @@ TEST_F(metric_trie_test, timer_integration_test)
     EXPECT_TRUE(trie.has({1}));
     EXPECT_TRUE(trie.has({1, 2}));
 }
+
+TEST_F(metric_trie_test, preserves_top_node)
+{
+    trie.down(11) = 123;
+    trie.up();
+    EXPECT_EQ(123, trie.down(11));
+}
+
