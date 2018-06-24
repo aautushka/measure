@@ -192,7 +192,7 @@ TEST_F(metric_monitors_test, produces_report_with_string_key)
 
 TEST_F(metric_monitors_test, never_starts_sampling)
 {
-    mon.sample(0);
+    mon.stop_sampling_after(0);
     mon.start(1);
     mon.start(2);
     mon.start(3);
@@ -219,7 +219,7 @@ TEST_F(metric_monitors_test, produces_json_with_no_common_root_element)
 TEST_F(metric_monitors_test, stops_sampling_after_reaching_limit_of_one)
 {
     metric::monitor<char> mon;
-    mon.sample(1);
+    mon.stop_sampling_after(1);
 
     mon.start('a');
     mon.stop();
@@ -236,7 +236,7 @@ TEST_F(metric_monitors_test, stops_sampling_after_reaching_limit_of_one)
 TEST_F(metric_monitors_test, stops_sampling_after_reaching_limit_of_two)
 {
     metric::monitor<char> mon;
-    mon.sample(2);
+    mon.stop_sampling_after(2);
 
     mon.start('a');
     mon.stop();
@@ -253,7 +253,7 @@ TEST_F(metric_monitors_test, stops_sampling_after_reaching_limit_of_two)
 TEST_F(metric_monitors_test, sampling_limit_has_no_affect_on_sampling_depth)
 {
     metric::monitor<char> mon;
-    mon.sample(1);
+    mon.stop_sampling_after(1);
 
     mon.start('a');
     mon.start('b');

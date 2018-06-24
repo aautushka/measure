@@ -1061,9 +1061,13 @@ public:
         return to_json(report(type));
     }
 
-    void sample(unsigned limit)
+    void stop_sampling_after(unsigned samples_num)
     {
-        sample_limit_ = limit;
+        sample_limit_ = samples_num;
+    }
+    
+    void start_sampling_after(unsigned samples_num)
+    {
     }
     
 private:
