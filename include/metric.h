@@ -620,6 +620,9 @@ private:
 // 1. limit stack depth
 // 2. limit number of metrics stored
 // 3. contiguos object pool
+// 4. make trie copy-able
+// 5. perfect forwarding of functor args (lambdas)
+// 6. better sampling options: medians? 
 template <typename K, typename V, int N = 254>
 class trie
 {
@@ -631,6 +634,14 @@ public:
     {
         /* foreach_node(root, [](auto n){ delete n; }); */
     }
+
+    trie() = default;
+    trie(trie&&) = default;
+    trie& operator =(trie&&) = default;
+
+
+    trie(const trie&) = delete;
+    trie& operator =(const trie&) = delete;
 
     value_type& up()
     {
