@@ -29,6 +29,8 @@ struct metric_trie_test : ::testing::Test
 {
     using trie_t = metric::trie<int, int>;
     trie_t trie;
+    trie_t lhs;
+    trie_t rhs;
 };
 
 TEST_F(metric_trie_test, adds_node)
@@ -213,3 +215,63 @@ TEST_F(metric_trie_test, have_no_common_root)
     EXPECT_EQ(2, trie.at({2}));
 }
 
+TEST_F(metric_trie_test, clones_one_element_trie)
+{
+    trie.down(11) = 123;
+    auto clone = trie.clone();
+
+    EXPECT_EQ(123, clone.at({11}));
+}
+
+TEST_F(metric_trie_test, clones_one_element_trie_with_no_cursor)
+{
+    trie.down(11) = 123;
+    trie.up();
+    auto clone = trie.clone();
+
+    EXPECT_EQ(123, clone.at({11}));
+}
+
+TEST_F(metric_trie_test, clones_deep_trie)
+{
+    trie.down(11) = 123;
+    trie.down(22) = 456;
+    trie.down(33) = 789;
+    auto clone = trie.clone();
+
+    EXPECT_EQ(123, clone.at({11}));
+    EXPECT_EQ(456, clone.at({11, 22}));
+    EXPECT_EQ(789, clone.at({11, 22, 33}));
+}
+
+TEST_F(metric_trie_test, clones_wide_trie)
+{
+    trie.down(11) = 123;
+    trie.up();
+    trie.down(22) = 456;
+    trie.up();
+    trie.down(33) = 789;
+    trie.up();
+    auto clone = trie.clone();
+
+    EXPECT_EQ(123, clone.at({11}));
+    EXPECT_EQ(456, clone.at({22}));
+    EXPECT_EQ(789, clone.at({33}));
+}
+
+TEST_F(metric_trie_test, combines_tries)
+{
+    rhs.down(1) = 11;
+    lhs.down(2) = 22;
+    auto combine = rhs.combine(lhs);
+    EXPECT_EQ(11, combine.at({1}));
+    EXPECT_EQ(22, combine.at({2}));
+}
+
+TEST_F(metric_trie_test, aggregates_tries)
+{
+    rhs.down(1) = 11;
+    lhs.down(1) = 22;
+    auto combine = rhs.combine(lhs);
+    EXPECT_EQ(33, combine.at({1}));
+}

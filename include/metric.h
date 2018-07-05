@@ -368,6 +368,12 @@ public:
         return now() - elapsed;
     }
 
+    timer& operator +=(const timer& other) 
+    {
+        _elapsed += other._elapsed;
+        return *this;
+    }
+
 private:
     static usec_t usec(timeval time)
     {
@@ -420,6 +426,13 @@ public:
         return usec(time);
     }
 
+    aggregate_timer& operator +=(const aggregate_timer& other)
+    {
+        _elapsed += other._elapsed;
+        _calls += other._calls;
+        return *this;
+    }
+
 private:
 
     static usec_t usec(timeval time)
@@ -449,8 +462,21 @@ public:
     using size_type = std::size_t;
 
     heap_pool() = default; 
-    heap_pool(heap_pool&&) = default;
-    heap_pool& operator =(heap_pool&&) = default;
+
+    heap_pool(const heap_pool&) = delete;
+    heap_pool& operator =(const heap_pool&) = delete;
+
+    heap_pool(heap_pool&& other)
+    {
+        move_from(std::move(other));
+    }
+
+    heap_pool& operator =(heap_pool&& other)
+    {
+        free_memory();
+        move_from(std::move(other));
+        return *this;
+    }
 
     ~heap_pool() noexcept
     {
@@ -500,9 +526,6 @@ public:
         dealloc(t);
     }
 
-    heap_pool(const heap_pool&) = delete;
-    heap_pool& operator =(const heap_pool&) = delete;
-
     size_type capacity() const noexcept
     {
         return capacity_;
@@ -533,6 +556,11 @@ public:
         return t;
     }
 
+    static const T* at(const T* t)
+    {
+        return t;
+    }
+
 private:
     using object = pooled_object<T>;
     
@@ -543,6 +571,17 @@ private:
         object data[1];
     };
 
+    void move_from(heap_pool&& other)
+    {
+        head_ = other.head_;
+        tail_ = other.tail_;
+        flist_ = other.flist_;
+        slab_size_ = other.slab_size_;
+        capacity_ = other.capacity_;
+        size_ = other.size_;
+
+        other.set_defaults();
+    }
 
     T* remove_free_list_head() noexcept
     {
@@ -561,6 +600,8 @@ private:
             free(cur);
             cur = next;
         }
+
+        set_defaults();
     }
 
     void create_new_slab() noexcept
@@ -614,6 +655,15 @@ private:
         return {flist, prev};
     }
 
+    void set_defaults()
+    {
+        head_ = tail_ = nullptr;
+        flist_ = nullptr;
+        slab_size_ = 1;
+        capacity_ = 0;
+        size_ = 0;
+    }
+
     slab* head_ = nullptr;
     slab* tail_ = nullptr;
     object* flist_ = nullptr;
@@ -635,6 +685,7 @@ class trie
 public:
     using key_type = K;
     using value_type = V;
+    using self_type = trie<K, V, N>;
 
     ~trie()
     {
@@ -774,7 +825,23 @@ public:
     {
         return trie_depth;
     }
-    
+
+    self_type clone() const
+    {
+        self_type result;
+
+        recursive_clone(result, root);
+
+        return result;
+    }
+
+    self_type combine(const self_type& other) const
+    {
+        self_type result;
+        recursive_clone(result, root);
+        other.recursive_clone(result, other.root);
+        return result;
+    }
 
 private:
     struct node
@@ -794,6 +861,13 @@ private:
         assert(idx != nullidx);
         return *pool.at(idx);
     }
+
+    const node& at(index_type idx) const
+    {
+        assert(idx != nullidx);
+        return *pool.at(idx);
+    }
+
 
     index_type new_node()
     {
@@ -876,6 +950,19 @@ private:
             foreach_node(at(p).sibling, std::forward<decltype(func)>(func));
 
             std::forward<decltype(func)>(func)(p);
+        }
+    }
+
+    void recursive_clone(self_type& result, index_type p) const
+    {
+        if (p != nullidx)
+        {
+            // TODO what if operator += is not defined? use templates to fix this
+            result.down(at(p).key) += at(p).value;
+
+            recursive_clone(result, at(p).child);
+            result.up();
+            recursive_clone(result, at(p).sibling);
         }
     }
 
@@ -1054,7 +1141,7 @@ public:
                 else
                 {
                     std::stringstream ss;
-                    ss << percentage << "%, " << val.elapsed() << "us, " << val.calls() << "calls, " << val.avg() << "avg us";
+                    ss << percentage << "% [" << val.elapsed() << "/ " << val.calls() << " = " << val.avg() << " us]";
                     res[path] = ss.str();
                 }
             });
@@ -1095,6 +1182,20 @@ public:
     void start_sampling_after(unsigned samples_num)
     {
         sample_start_ = samples_num + 1;
+    }
+
+    monitor clone() const
+    {
+        monitor result;
+        result.trie_ = std::move(trie_.clone());
+        return result;
+    }
+
+    monitor combine(const monitor& other) const
+    {
+        monitor result;
+        result.trie_ = std::move(trie_.combine(other.trie_));
+        return result;
     }
     
 private:

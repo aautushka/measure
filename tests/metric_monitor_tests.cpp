@@ -29,6 +29,8 @@ struct metric_monitors_test : ::testing::Test
 {
     using mon_t = metric::monitor<int>;
     mon_t mon;
+    mon_t lhs;
+    mon_t rhs;
 
     void busy_loop(int usec)
     {
@@ -341,3 +343,27 @@ TEST_F(metric_monitors_test, sample_range)
 
     EXPECT_EQ("{2:1}", exact_report(mon, metric::report_type::calls));
 }
+
+TEST_F(metric_monitors_test, clones_monitor)
+{
+    mon.start(1);
+    mon.stop();
+
+    auto clone = mon.clone();
+
+    EXPECT_EQ("{1:1}", exact_report(clone, metric::report_type::calls));
+}
+
+TEST_F(metric_monitors_test, combines_monitors)
+{
+    lhs.start(1);
+    lhs.stop();
+
+    rhs.start(1);
+    rhs.stop();
+
+    auto combine = lhs.combine(rhs);
+
+    EXPECT_EQ("{1:2}", exact_report(combine, metric::report_type::calls));
+}
+
