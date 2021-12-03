@@ -4,8 +4,8 @@ enable_testing()
 find_package(GTest REQUIRED)
 include_directories (..)
 
-add_compile_options(-std=c++17)
-
+add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
+add_link_options(-fsanitize=address)
 
 set(SRC 
   metric_monitor_tests.cpp

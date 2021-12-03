@@ -370,3 +370,14 @@ TEST_F(metric_monitors_test, combines_monitors)
     EXPECT_EQ("{1:2}", exact_report(combine, metric::report_type::calls));
 }
 
+// need address sanitizer for this
+// unfortunately, appleclang does not support this: ASAN_OPTIONS=detect_leaks=1 ./tests
+TEST_F(metric_monitors_test, memory_leak) { 
+    const auto depth = 100000;
+    for (int i = 0; i < depth; ++i) {
+        lhs.start(i);
+    }
+    for (int i = 0; i < depth; ++i) {
+        lhs.stop();
+    }
+}
