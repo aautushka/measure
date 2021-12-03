@@ -1,9 +1,7 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.21)
 
 project(metric)
 
 include_directories(include)
-
-add_compile_options(-std=gnu++14)
 
 add_subdirectory(tests)

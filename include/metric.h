@@ -30,6 +30,7 @@ For more information, please refer to <http://unlicense.org/>
 #include <sys/time.h>
 #include <map>
 #include <iomanip>
+#include <sstream>
 
 namespace metric
 {
