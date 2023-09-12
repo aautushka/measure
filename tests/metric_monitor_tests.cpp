@@ -347,3 +347,12 @@ TEST_F(metric_monitors_test, memory_leak) {
     lhs.stop();
   }
 }
+
+TEST_F(metric_monitors_test, continue_measuring_with_new_name) {
+  measure::monitor<char> mon;
+  mon.start('a');
+  mon.proceed('b');
+  mon.stop();
+
+  EXPECT_EQ("{a:0,b:0}", report(mon));
+}

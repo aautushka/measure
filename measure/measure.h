@@ -523,7 +523,8 @@ public:
   using value_type = V;
   using self_type = trie<K, V, N>;
 
-  ~trie() { /* foreach_node(root, [](auto n){ delete n; }); */ }
+  ~trie() { /* foreach_node(root, [](auto n){ delete n; }); */
+  }
 
   trie() = default;
   trie(trie &&) = default;
@@ -833,6 +834,11 @@ public:
     if (sample_start_ == 0 && (trie_.depth() > 0 || sample_limit_ > 0)) {
       trie_.up().stop();
     }
+  }
+
+  void proceed(T id) {
+    stop();
+    start(id);
   }
 
   metric scope(T id) { return metric(id, *this); }
